@@ -72,6 +72,19 @@ python3 codebuddy_menubar.py
 
 首次运行会自动生成 `~/.codebuddy-menubar.json`，填入凭证后点菜单里的“重新载入配置”。
 
+### 方式三：让 AI Agent 一句话装好 🤖
+
+如果你在用 CodeBuddy / Claude Code / Cursor 等 AI 编程助手，把下面这句直接发给它：
+
+```text
+帮我装好 https://github.com/stevencmy/codebuddy-menubar 这个 macOS 菜单栏工具并跑起来，
+按仓库里的 AGENTS.md 执行，需要我抓 Cookie 时再叫我。
+```
+
+Agent 会自动完成：克隆仓库 → 运行安装脚本 → 引导你抓取凭证 → 写入配置 →
+重启并验证菜单栏显示。只有"从浏览器复制 Cookie"这一步需要你亲手操作
+（登录态在浏览器里，Agent 拿不到），其余全部自动。
+
 > 要求：macOS + Python 3.9+。菜单栏图标为 SF Symbols 渲染的模板图（`bar_icon.png` 已随仓库提供）。
 
 ## 配置参考
