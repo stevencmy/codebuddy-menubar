@@ -15,6 +15,17 @@
 
 ## 安装步骤
 
+**若工具已安装（`launchctl list | grep codebuddy.menubar` 有输出，且
+`~/Library/Application Support/codebuddy-menubar/codebuddy_menubar.py` 存在）：**
+
+1. 确认仓库与远端同步（`git fetch && git status`），落后则 `git pull`
+2. 比较仓库 `codebuddy_menubar.py` 与已安装副本是否一致（`diff -q`），
+   不一致则覆盖过去
+3. 执行 `launchctl kickstart -k gui/$(id -u)/com.codebuddy.menubar` 重启
+4. 跳到「验证安装」一节，不要重复跑 setup.sh 之外的操作
+
+**全新安装：**
+
 ```bash
 git clone https://github.com/stevencmy/codebuddy-menubar.git
 cd codebuddy-menubar
