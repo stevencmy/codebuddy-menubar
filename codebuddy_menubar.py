@@ -131,14 +131,30 @@ class Api:
         return resp.json()
 
     def checkin(self):
-        """每日签到。返回 (freshly_claimed, credit or None)。"""
-        j = self._request('POST', '/billing/meter/daily-checkin', {})
+        """每日签到。返回 (freshly_claimed, credit or None)。
+        网关对「今日已签到」返回 HTTP 400 + code=10001 (幂等), 不能当错误处理。"""
+        url = self.cfg['api_base'].rstrip('/') + '/billing/meter/daily-checkin'
+        kwargs = dict(headers=self._headers(), timeout=20, verify=self.verify)
+        try:
+            resp = self.session.post(url, data='{}', **kwargs)
+        except requests.exceptions.SSLError:
+            self.verify = False
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            kwargs['verify'] = False
+            resp = self.session.post(url, data='{}', **kwargs)
+        try:
+            j = resp.json()
+        except ValueError:
+            resp.raise_for_status()
+            return False, None
         code = j.get('code')
+        if resp.status_code == 400 and code == 10001:
+            return False, None  # 今日已签到, 网关幂等拒绝
+        if resp.status_code >= 400:
+            resp.raise_for_status()
         if code == 0:
             credit = (j.get('data') or {}).get('credit')
             return True, credit
-        if code == 10001:  # 网关幂等: 今日已签到
-            return False, None
         return False, None
 
     def usage(self):
@@ -258,13 +274,13 @@ class CodeBuddyApp(rumps.App):
     # ---------- 渲染 (主线程) ----------
 
     def _bar_title(self, remain, pct):
-        """状态栏标题: [图标] 积分 · 百分比"""
+        """状态栏标题: [图标] 积分 · 百分比 (全部截断, 不四舍五入)"""
         if remain >= 100:
-            num = f'{remain:.0f}'
+            num = str(int(remain))  # 截断到整数
         elif remain >= 10:
-            num = f'{remain:.1f}'
+            num = f'{int(remain * 10) / 10:.1f}'.rstrip('0').rstrip('.')
         else:
-            num = f'{remain:.2f}'
+            num = f'{int(remain * 100) / 100:.2f}'.rstrip('0').rstrip('.')
         prefix = '' if self._use_icon \
             else self.cfg.get('bar_icon', '🐱') + ' '
         if self.cfg.get('show_percent', True):
@@ -289,9 +305,11 @@ class CodeBuddyApp(rumps.App):
 
         remain, total, pkgs = r['remain'], r['total'], r['pkgs']
         pct = (remain / total * 100) if total > 0 else 0
+        # 与状态栏一致: 截断到一位小数, 不四舍五入
+        pct_trunc = f'{int(pct * 10) / 10:.1f}'.rstrip('0').rstrip('.') + '%'
         self.title = self._bar_title(remain, pct)
         self._mi_title.title = (f'余量 {fmt(remain)} / {fmt(total)}'
-                                f'（{pct:.1f}%）')
+                                f'（{pct_trunc}）')
         for i, slot in enumerate(self._pkg_slots):
             if i < len(pkgs) and i < MAX_SLOTS:
                 name, pr, ps, exp = pkgs[i]
@@ -322,7 +340,9 @@ class CodeBuddyApp(rumps.App):
         pass
 
     def on_refresh(self, _sender):
-        self._last_fetch = 0.0  # 让下一个 tick 立即触发
+        # 若无正在进行的请求, 立即启动一次刷新 (避免等下一次 tick)
+        if not self._working:
+            self._start_worker()
 
     def on_open(self, _sender):
         subprocess.Popen(['open', self.cfg['api_base'].rstrip('/')
@@ -330,7 +350,8 @@ class CodeBuddyApp(rumps.App):
 
     def on_reload(self, _sender):
         self.cfg = load_config()
-        self._last_fetch = 0.0
+        if not self._working:
+            self._start_worker()
 
 
 if __name__ == '__main__':

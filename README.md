@@ -18,9 +18,9 @@
 > [!NOTE]
 > 本项目的用量接口与鉴权方案参考自 [wwenc6621/CodeBuddy-Usage](https://github.com/wwenc6621/CodeBuddy-Usage)（MIT License），感谢原作者对接口协议的逆向与分享。本项目为个人工具，与腾讯 CodeBuddy 官方无关。
 
-<!-- 截图位：建议放一张菜单栏 + 下拉菜单的截图到 docs/screenshot.png
+<!-- 截图位：建议放一张菜单栏 + 下拉菜单的截图到 docs/screenshot.png -->
+
 ![screenshot](docs/screenshot.png)
--->
 
 ## 功能
 
