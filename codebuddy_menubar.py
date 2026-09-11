@@ -4,7 +4,7 @@
 核心功能:
   1. 实时监控: 菜单栏常驻显示腾讯云 CodeBuddy / WorkBuddy 积分余量与百分比,
      下拉可查看各套餐消耗顺序与到期倒计时, 低余额弹窗提醒
-  2. 自动领积分: 每日自动签到, 签到成功弹系统通知
+  2. 自动领积分: 每日自动签到(当天仅尝试一次), 签到成功弹系统通知
 
 消耗顺序按官方计费规则计算: 先到期先消耗 (套餐配额/加量包/裂变包一起比较),
 到期时间相同则先扣基础用量、再扣加赠用量; ▶ 消耗中 / ▷ 排队中。
@@ -254,8 +254,9 @@ class Api:
         return resp.json()
 
     def checkin(self):
-        """每日签到。返回 (freshly_claimed, credit or None)。
-        网关对「今日已签到」返回 HTTP 400 + code=10001 (幂等), 不能当错误处理。"""
+        """每日签到。返回 (freshly_claimed, credit, already_today)。
+        网关对「今日已签到」返回 HTTP 400 + code=10001 (幂等), 不能当错误处理;
+        此时 already_today=True, 调用方可据此当天内不再重试签到。"""
         url = self.cfg['api_base'].rstrip('/') + '/billing/meter/daily-checkin'
         kwargs = dict(headers=self._headers(), timeout=20, verify=self.verify)
         try:
@@ -269,16 +270,16 @@ class Api:
             j = resp.json()
         except ValueError:
             resp.raise_for_status()
-            return False, None
+            return False, None, False
         code = j.get('code')
         if resp.status_code == 400 and code == 10001:
-            return False, None  # 今日已签到, 网关幂等拒绝
+            return False, None, True   # 今日已签到, 网关幂等拒绝
         if resp.status_code >= 400:
             resp.raise_for_status()
         if code == 0:
             credit = (j.get('data') or {}).get('credit')
-            return True, credit
-        return False, None
+            return True, credit, True
+        return False, None, False
 
     def usage(self):
         j = self._request('POST', '/billing/meter/get-user-resource', {
@@ -356,6 +357,7 @@ class CodeBuddyApp(rumps.App):
         self._working = False
         self._last_fetch = 0.0
         self._low_notified = False
+        self._checkin_done_date = None  # 当天已签到则记日期, 避免高频刷新时反复打签到接口
         rumps.Timer(self._tick, 1).start()
 
     # ---------- 调度 (主线程) ----------
@@ -385,13 +387,17 @@ class CodeBuddyApp(rumps.App):
                 raise RuntimeError('NO_COOKIE')
             api = Api(cfg)
             checkin_msg = None
-            if cfg.get('auto_checkin', True):
+            today = time.strftime('%Y-%m-%d')
+            # 当天已签到就跳过, 避免高频刷新时反复打签到接口 (签到幂等但仍是无效流量)
+            if cfg.get('auto_checkin', True) and self._checkin_done_date != today:
                 try:
-                    fresh, credit = api.checkin()
+                    fresh, credit, already = api.checkin()
                     if fresh:
                         checkin_msg = '签到成功' + (f' +{fmt(credit)}' if credit else '')
+                    if fresh or already:
+                        self._checkin_done_date = today  # 今天已签到, 当天不再重试
                 except Exception:
-                    checkin_msg = None  # 签到失败不影响余量展示
+                    checkin_msg = None  # 签到失败不影响余量展示, 下次刷新重试
             remain, total, pkgs = api.usage()
             result.update(ok=True, remain=remain, total=total,
                           pkgs=pkgs, checkin=checkin_msg)
