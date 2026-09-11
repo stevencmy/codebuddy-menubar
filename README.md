@@ -94,7 +94,7 @@ Agent 会自动完成：克隆仓库 → 运行安装脚本 → 引导你抓取�
 | `cookie` | （必填） | 官网登录态 Cookie |
 | `user_agent` | （必填） | 与 Cookie 同一请求的 User-Agent |
 | `api_base` | `https://www.workbuddy.cn` | 国际站改为 `https://www.workbuddy.ai` |
-| `refresh_minutes` | `30` | 自动刷新间隔（分钟，最小 1） |
+| `refresh_minutes` | `1` | 自动刷新间隔（分钟，最小 1） |
 | `auto_checkin` | `true` | 每日自动签到 |
 | `low_balance` | `100` | 低余额提醒阈值，`0` 关闭 |
 | `show_percent` | `true` | 状态栏是否显示百分比（截断保留一位小数，不四舍五入） |

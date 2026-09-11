@@ -50,7 +50,7 @@ ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 DEFAULTS = {
     'api_base': 'https://www.workbuddy.cn',   # 国际站改为 https://www.workbuddy.ai
-    'refresh_minutes': 30,
+    'refresh_minutes': 1,
     'auto_checkin': True,
     'low_balance': 100,
     'show_percent': True,

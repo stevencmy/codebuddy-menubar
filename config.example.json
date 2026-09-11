@@ -2,7 +2,7 @@
   "cookie": "粘贴你从 www.workbuddy.cn 登录态请求中复制的 Cookie（见 README 抓取教程）",
   "user_agent": "与 Cookie 同一请求中的 User-Agent",
   "api_base": "https://www.workbuddy.cn",
-  "refresh_minutes": 30,
+  "refresh_minutes": 1,
   "auto_checkin": true,
   "low_balance": 100,
   "show_percent": true,
